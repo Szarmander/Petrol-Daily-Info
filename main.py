@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import os
 import sys
@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-today = datetime.now(ZoneInfo("Europe/Warsaw"))
+tomorrow = datetime.now(ZoneInfo("Europe/Warsaw")) + timedelta(days=1)
+
 months = {
     1: "stycznia",
     2: "lutego",
@@ -24,7 +25,7 @@ months = {
     12: "grudnia"
 }
 
-looking_date = f"{today.day} {months[today.month]} {today.year}"
+looking_date = f"{tomorrow.day} {months[tomorrow.month]} {tomorrow.year}"
 
 FILE_STATUS = "status.txt"
 
@@ -32,7 +33,7 @@ if(os.path.exists(FILE_STATUS)):
     with open(FILE_STATUS, "r", encoding="utf-8") as f:
         last_date = f.read().strip()
         if last_date == looking_date:
-            print("Already checked today")
+            print("Already checked for tomorrow")
             sys.exit(0)
 
 BASE_URL = "https://www.gov.pl"
@@ -71,7 +72,7 @@ if ul_list:
         prices.append(li.get_text(strip=True))
 
 if not prices:
-    prices_text = "Finded article but not finded prices"
+    print("Found article but not found prices")
     sys.exit(0)
 else:
     prices_text = "\n".join([f"• **{price}**" for price in prices])
