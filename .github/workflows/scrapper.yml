@@ -2,7 +2,7 @@ name: Petrol prices scrapper
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: 'TZ=Europe/Warsaw */5 * * * *'
   workflow_dispatch:
 
 jobs:
