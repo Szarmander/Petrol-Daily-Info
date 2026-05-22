@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 import os
 import sys
 import requests
@@ -8,53 +6,39 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-tomorrow = datetime.now(ZoneInfo("Europe/Warsaw")) + timedelta(days=1)
-
-months = {
-    1: "stycznia",
-    2: "lutego",
-    3: "marca",
-    4: "kwietnia",
-    5: "maja",
-    6: "czerwca",
-    7: "lipca",
-    8: "sierpnia",
-    9: "września",
-    10: "października",
-    11: "listopada",
-    12: "grudnia"
-}
-
-looking_date = f"{tomorrow.day} {months[tomorrow.month]} {tomorrow.year}"
-
 FILE_STATUS = "status.txt"
+last_title = ""
 
-if(os.path.exists(FILE_STATUS)):
+if os.path.exists(FILE_STATUS):
     with open(FILE_STATUS, "r", encoding="utf-8") as f:
-        last_date = f.read().strip()
-        if last_date == looking_date:
-            print("Already checked for tomorrow")
-            sys.exit(0)
+        last_title = f.read().strip()
 
 BASE_URL = "https://www.gov.pl"
 NEWS_URL = f"{BASE_URL}/web/energia/wiadomosci"
 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-print("Searching for article with date ", looking_date)
+print("Searching for the latest fuel prices article...")
 response = requests.get(NEWS_URL, headers=headers)
 soup = BeautifulSoup(response.content, "html.parser")
 
 link_for_article = None
-looking_phrase = f"Maksymalna cena detaliczna paliw obowiązująca {looking_date}"
+found_title = None
 
 for a in soup.find_all("a", href=True):
     title = a.get_text(strip=True)
-    if looking_phrase.lower() in title.lower():
+    if "maksymalna cena detaliczna paliw" in title.lower():
         link_for_article = a.get("href")
+        found_title = title
         break
 
 if not link_for_article:
     print("Article not found")
+    sys.exit(0)
+
+print(f"Found article: '{found_title}'")
+
+if found_title == last_title:
+    print("Already checked the latest article. Exiting.")
     sys.exit(0)
 
 if not link_for_article.startswith("http"):
@@ -64,12 +48,13 @@ art_response = requests.get(link_for_article, headers=headers)
 art_soup = BeautifulSoup(art_response.content, "html.parser")
 
 prices = []
-info_container = art_soup.find("div", class_="editor-content")
-ul_list = info_container.find("ul")
+info_container = art_soup.find("div", class_="editor-content") or art_soup.find("article")
 
-if ul_list:
-    for li in ul_list.find_all("li"):
-        prices.append(li.get_text(strip=True))
+if info_container:
+    ul_list = info_container.find("ul")
+    if ul_list:
+        for li in ul_list.find_all("li"):
+            prices.append(li.get_text(strip=True))
 
 if not prices:
     print("Found article but not found prices")
@@ -83,7 +68,7 @@ if not webhook_url:
     sys.exit(1)
 
 message = {
-    "content": f"⛽ **Nowe maksymalne ceny paliw na dzień {looking_date}!**\n\n{prices_text}\n\n[🔗 Kliknij tutaj, aby otworzyć artykuł]({link_for_article})"
+    "content": f"⛽ **Nowe ceny paliw!**\n*{found_title}*\n\n{prices_text}\n\n[🔗 Kliknij tutaj, aby otworzyć artykuł]({link_for_article})"
 }
 
 webhook_response = requests.post(webhook_url, json=message)
@@ -91,7 +76,7 @@ webhook_response = requests.post(webhook_url, json=message)
 if webhook_response.status_code in (200, 204):
     print("Message sent successfully")
     with open(FILE_STATUS, "w", encoding="utf-8") as f:
-        f.write(looking_date)
+        f.write(found_title)
 else:
     print(f"Failed to send message. Status code: {webhook_response.status_code}")
     sys.exit(1)
