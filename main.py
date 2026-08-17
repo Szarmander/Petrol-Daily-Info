@@ -81,32 +81,31 @@ except requests.exceptions.RequestException as e:
 
 art_soup = BeautifulSoup(art_response.content, "html.parser")
 
-# --- NOWY, PANCERNY SYSTEM WYCIĄGANIA CEN ---
 prices = []
 
-# METODA 1: Szukamy punktów listy zawierających słowo "zł"
-for li in art_soup.find_all("li"):
+info_container = art_soup.find("div", class_="editor-content") or art_soup.find("article", id="main-content") or art_soup
+
+for li in info_container.find_all("li"):
     text = li.get_text(strip=True)
-    if "zł" in text.lower():
+    text_lower = text.lower()
+    
+    if "zł" in text_lower and ("benzyna" in text_lower or "olej" in text_lower or "zł/l" in text_lower or "lpg" in text_lower):
         prices.append(text)
 
-# METODA 2 (Awaryjna): Jeśli nie znaleziono listy z "zł", wyciągamy tekst z akapitu "intro"
 if prices:
     prices_text = "\n".join([f"• **{price}**" for price in prices])
 else:
     print("⚠️ Nie znaleziono cen w formacie listy <ul>, szukam w tagu <p class='intro'>...")
     intro_tag = art_soup.find("p", class_="intro")
     if intro_tag:
-        # Zastępujemy tekst z intro, lekko go formatując
         prices_text = f"*{intro_tag.get_text(strip=True)}*"
     else:
         print("❌ Nie znaleziono cen w artykule w żaden znany sposób.")
         sys.exit(0)
-# ---------------------------------------------
 
 webhook_url = os.getenv("DISCORD_WEBHOOK")
 if not webhook_url:
-    print("DISCORD_WEBHOOK not set in .env file")
+    print("DISCORD_WEBHOOK not set in .env file / secrets")
     sys.exit(1)
 
 message = {
