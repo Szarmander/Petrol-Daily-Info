@@ -89,7 +89,7 @@ for li in info_container.find_all("li"):
     text = li.get_text(strip=True)
     text_lower = text.lower()
     
-    if "zł" in text_lower and ("benzyna" in text_lower or "olej" in text_lower or "zł/l" in text_lower or "lpg" in text_lower):
+    if "zł/l" in text_lower:
         prices.append(text)
 
 if prices:
