@@ -1,10 +1,16 @@
 import os
 import sys
 import requests
+import socket
+import urllib3.util.connection as urllib3_cn
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+
+def allowed_gai_family():
+    return socket.AF_INET
+urllib3_cn.allowed_gai_family = allowed_gai_family
 
 load_dotenv()
 
